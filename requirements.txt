@@ -1,0 +1,6 @@
+streamlit
+wordcloud
+nltk
+matplotlib
+json
+os
