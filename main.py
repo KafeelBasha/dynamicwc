@@ -6,14 +6,27 @@ import os
 import nltk
 from nltk.corpus import stopwords
 
-# Download stopwords if not already available
-try:
-    stopwords.words('english')
-except nltk.downloader.DownloadError:
+# --- NLTK Data Download ---
+# This is the most reliable way to ensure the necessary resources
+# are available. The old `try...except` block was failing because
+# the exception class `nltk.downloader.DownloadError` has been removed.
+# We download both 'stopwords' and 'punkt' (often useful for tokenization).
+@st.cache_data
+def download_nltk_data():
+    """
+    Downloads required NLTK data resources.
+    This function is cached to prevent re-downloading on every rerun.
+    """
     nltk.download('stopwords')
+    nltk.download('punkt') # Punctuation tokenizer, often useful with NLTK
+    return True
+
+# Call the download function once at the start
+downloaded = download_nltk_data()
 
 # Get the set of English stopwords from NLTK
 stop_words = set(stopwords.words('english'))
+
 # --- Constants and Configuration ---
 DATA_FILE = "feedback_data.json"
 APP_TITLE = "Dynamic Feedback & Word Cloud Dashboard"
