@@ -7,43 +7,58 @@ import nltk
 from nltk.corpus import stopwords
 
 # --- NLTK Data Download ---
-# This is the most reliable way to ensure the necessary resources
-# are available. The old `try...except` block was failing because
-# the exception class `nltk.downloader.DownloadError` has been removed.
-# We download both 'stopwords' and 'punkt' (often useful for tokenization).
 @st.cache_data
 def download_nltk_data():
     """
     Downloads required NLTK data resources.
     This function is cached to prevent re-downloading on every rerun.
     """
-    nltk.download('stopwords')
-    nltk.download('punkt') # Punctuation tokenizer, often useful with NLTK
-    return True
+    try:
+        nltk.download('stopwords')
+        nltk.download('punkt')
+        return True
+    except Exception as e:
+        st.error(f"Failed to download NLTK data: {e}")
+        return False
 
 # Call the download function once at the start
-downloaded = download_nltk_data()
+if not download_nltk_data():
+    st.stop() # Stop the app if download fails
 
 # Get the set of English stopwords from NLTK
 stop_words = set(stopwords.words('english'))
 
 # --- Constants and Configuration ---
 DATA_FILE = "feedback_data.json"
+TOPIC_FILE = "topic_data.json"  # New file for the shared topic
 APP_TITLE = "Dynamic Feedback & Word Cloud Dashboard"
 
 # --- Data Handling Functions ---
 
 def load_data():
-    """Load data from a JSON file. Create a new file if it doesn't exist."""
+    """Load feedback data from a JSON file. Create a new file if it doesn't exist."""
     if os.path.exists(DATA_FILE):
         with open(DATA_FILE, "r") as f:
             return json.load(f)
     return []
 
 def save_data(data):
-    """Save data to the JSON file."""
+    """Save feedback data to the JSON file."""
     with open(DATA_FILE, "w") as f:
         json.dump(data, f)
+
+def load_topic():
+    """Load the current topic from a shared JSON file."""
+    if os.path.exists(TOPIC_FILE):
+        with open(TOPIC_FILE, "r") as f:
+            topic_data = json.load(f)
+            return topic_data.get("current_topic", "")
+    return ""
+
+def save_topic(topic):
+    """Save the current topic to the shared JSON file."""
+    with open(TOPIC_FILE, "w") as f:
+        json.dump({"current_topic": topic}, f)
 
 # --- App State Initialization ---
 
@@ -53,15 +68,14 @@ if 'feedback_data' not in st.session_state:
 if 'admin_logged_in' not in st.session_state:
     st.session_state.admin_logged_in = False
 
-if 'current_topic' not in st.session_state:
-    st.session_state.current_topic = ""
-
 # --- UI Layout and Components ---
 
 st.set_page_config(layout="wide", page_title=APP_TITLE)
-
 st.title(APP_TITLE)
 st.markdown("---")
+
+# Load the topic from the shared file at the start of every run
+current_topic = load_topic()
 
 # Left Column for Feedback Input
 col1, col2 = st.columns([1, 1])
@@ -69,8 +83,8 @@ col1, col2 = st.columns([1, 1])
 with col1:
     st.header("Submit Your Feedback")
     # Display the current topic to the users
-    if st.session_state.current_topic:
-        st.markdown(f"**Topic for Feedback:** `{st.session_state.current_topic}`")
+    if current_topic:
+        st.markdown(f"**Topic for Feedback:** `{current_topic}`")
     else:
         st.info("The administrator has not set a topic yet.")
     
@@ -79,8 +93,8 @@ with col1:
         submitted = st.form_submit_button("Submit Feedback")
 
     if submitted:
-        if st.session_state.current_topic and feedback:
-            new_entry = {"topic": st.session_state.current_topic, "feedback": feedback}
+        if current_topic and feedback:
+            new_entry = {"topic": current_topic, "feedback": feedback}
             st.session_state.feedback_data.append(new_entry)
             save_data(st.session_state.feedback_data)
             st.success("Thank you for your feedback!")
@@ -127,7 +141,7 @@ if not st.session_state.admin_logged_in:
         if password == admin_password_secret:
             st.session_state.admin_logged_in = True
             st.success("Admin access granted!")
-            st.rerun() # Rerun to show download button
+            st.rerun()
         else:
             st.error("Invalid password.")
 else:
@@ -138,15 +152,15 @@ else:
     col_topic_clear, col_topic_set = st.columns([1,1])
 
     with col_topic_set:
-        new_topic = st.text_input("Set a new topic for feedback", value=st.session_state.current_topic, label_visibility="collapsed")
+        new_topic = st.text_input("Set a new topic for feedback", value=current_topic, label_visibility="collapsed")
         if st.button("Set Topic", use_container_width=True):
-            st.session_state.current_topic = new_topic
+            save_topic(new_topic)
             st.success(f"Topic set to: '{new_topic}'")
             st.rerun()
     
     with col_topic_clear:
         if st.button("Clear Topic", use_container_width=True):
-            st.session_state.current_topic = ""
+            save_topic("")
             st.warning("Topic has been cleared.")
             st.rerun()
         if st.button("Clear Word Cloud", use_container_width=True):
