@@ -1,4 +1,5 @@
 streamlit
+firebase-admin
 wordcloud
 nltk
 matplotlib
