@@ -4,14 +4,15 @@ from firebase_admin import credentials, db
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 import nltk
+from nltk import downloader
 from nltk.corpus import stopwords
 import json
 from collections import defaultdict
 
 try:
-    nltk.data.find('corpora/stopwords')
-except nltk.downloader.DownloadError:
-    nltk.download('stopwords')
+    downloader.download('stopwords')
+except downloader.DownloadError:
+    st.error("NLTK stopwords could not be downloaded.")
 stop_words = set(stopwords.words('english'))
 
 try:
